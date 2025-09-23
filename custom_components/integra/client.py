@@ -10,7 +10,7 @@ from satel_integra.satel_integra import AsyncSatel, AlarmState
 
 
 ZoneListener = abc.Callable[[bool], None]
-PartitionListener = abc.Callable[[str], None]
+PartitionListener = abc.Callable[[AlarmControlPanelState], None]
 
 
 class IntegraClient:
@@ -64,6 +64,9 @@ class IntegraClient:
         return self._stl.connected
 
     def get_zone_state(self, zone_id: int) -> bool:
+        if not self.connected:
+            return None
+        
         return zone_id in self._stl.violated_zones
 
     def add_zone_listener(self, zone_id: int, cb: ZoneListener):
@@ -76,6 +79,8 @@ class IntegraClient:
                 s.discard(cb)
                 if not s:
                     self._zone_listeners.pop(zone_id, None)
+
+        self._hass.loop.call_soon(cb, self.get_zone_state(zone_id))
 
         return _unsub
 
@@ -114,6 +119,8 @@ class IntegraClient:
                 s.discard(cb)
                 if not s:
                     self._partition_listeners.pop(partition_id, None)
+
+        self._hass.loop.call_soon(cb, self.get_partition_state(int(partition_id)))
 
         return _unsub
 

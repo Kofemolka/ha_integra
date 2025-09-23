@@ -30,7 +30,7 @@ async def async_setup_entry(
                 entry_id=entry.entry_id,
                 device_identifier=(DOMAIN, device_id),
                 partition_id=pid,
-                name=f"{pname} – Clear Alarm",
+                name=f"{pname} - Clear Alarm",
             )
         )
     add_entities(entities)
@@ -56,15 +56,27 @@ class IntegraClearAlarmButton(ButtonEntity):
         self._part_id = partition_id
         self._attr_name = name
         self._attr_unique_id = f"{entry_id}-partition-{partition_id}-clear"
+        self._unsub = None
+        self._available = None
+
+    async def async_added_to_hass(self) -> None:
+        self._unsub = self._client.add_partition_listener(
+            self._part_id, self._on_partition_state
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(identifiers={self._device_identifier})
 
     @property
-    def available(self) -> bool:
-        return self._client.connected
+    def available(self) -> bool | None:
+        return self._available
 
     async def async_press(self) -> None:
         """Called when the user clicks the button."""
         await self._client.async_clear_alarm(self._part_id)
+
+    def _on_partition_state(self, new_state: bool) -> None:
+        if self._client.connected != self._available:
+            self._available = self._client.connected
+            self.async_write_ha_state()

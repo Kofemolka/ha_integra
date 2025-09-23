@@ -3,6 +3,7 @@ from __future__ import annotations
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
+    AlarmControlPanelState
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -67,11 +68,10 @@ class IntegraPartitionPanel(AlarmControlPanelEntity):
         self._part_id = part_id
         self._attr_name = name
         self._attr_unique_id = f"{entry_id}-partition-{part_id}"
-        self._state: bool | None = None
+        self._state: AlarmControlPanelState | None = None
         self._unsub = None
 
     async def async_added_to_hass(self) -> None:
-        # subscribe specifically to this part_id; callback receives NEW state (str)
         self._unsub = self._client.add_partition_listener(
             self._part_id, self._on_partition_state
         )
@@ -82,7 +82,7 @@ class IntegraPartitionPanel(AlarmControlPanelEntity):
             self._unsub = None
 
     @property
-    def state(self) -> str | None:
+    def alarm_state(self) -> AlarmControlPanelState | None:
         return self._state
 
     @property
@@ -102,7 +102,7 @@ class IntegraPartitionPanel(AlarmControlPanelEntity):
     async def async_clear_alarm(self) -> None:
         await self._client.async_clear_alarm(self._part_id)
 
-    def _on_partition_state(self, new_state: bool) -> None:
+    def _on_partition_state(self, new_state: AlarmControlPanelState) -> None:
         if new_state != self._state:
             self._state = new_state
             self.async_write_ha_state()
